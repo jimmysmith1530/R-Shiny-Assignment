@@ -1,0 +1,73 @@
+ui <- fluidPage(
++     theme = bs_theme(),
++     titlePanel("CSV File Explorer"),
++     sidebarLayout(
++         sidebarPanel(
++             fileInput("file", "Upload CSV File", accept = ".csv"),
++             uiOutput("var_selectors")
++         ),
++         mainPanel(
++             h3("Preview of Uploaded Data"),
++             tableOutput("dataTable"),
++             plotOutput("hist_plot"),
++             plotOutput("bar_plot"),
++             plotOutput("scatter_plot"),
++             plotOutput("mosaic_plot"),
++             plotOutput("boxplot")
++         )
++     )
++ )
+> 
+> server <- function(input, output) {
++     data <- reactive({
++         req(input$file)
++         read.csv(input$file$datapath, stringsAsFactors = TRUE)
++     })
++     
++     output$dataTable <- renderTable({
++         head(data(), 6)
++     })
++     
++     output$var_selectors <- renderUI({
++         req(data())
++         df <- data()
++         
++         tagList(
++             selectInput("num_var", "Select Numeric Variable", choices = names(df[sapply(df, is.numeric)])),
++             selectInput("qual_var", "Select Qualitative Variable", choices = names(df[sapply(df, function(x) is.factor(x) || is.character(x))])),
++             selectInput("scatter_x", "Select X Variable for Scatterplot", choices = names(df[sapply(df, is.numeric)])),
++             selectInput("scatter_y", "Select Y Variable for Scatterplot", choices = names(df[sapply(df, is.numeric)])),
++             selectInput("mosaic_x", "Select X Variable for Mosaic Plot", choices = names(df[sapply(df, function(x) is.factor(x) || is.character(x))])),
++             selectInput("mosaic_y", "Select Y Variable for Mosaic Plot", choices = names(df[sapply(df, function(x) is.factor(x) || is.character(x))])),
++             selectInput("box_num", "Select Numeric Variable for Boxplot", choices = names(df[sapply(df, is.numeric)])),
++             selectInput("box_qual", "Select Qualitative Variable for Boxplot", choices = names(df[sapply(df, function(x) is.factor(x) || is.character(x))]))
++         )
++     })
++     
++     output$hist_plot <- renderPlot({
++         req(input$num_var)
++         hist(data()[[input$num_var]], col = "blue", main = paste("Histogram of", input$num_var), xlab = input$num_var)
++     })
++     
++     output$bar_plot <- renderPlot({
++         req(input$qual_var)
++         barplot(table(data()[[input$qual_var]]), col = "green", main = paste("Bar Chart of", input$qual_var), las = 2)
++     })
++     
++     output$scatter_plot <- renderPlot({
++         req(input$scatter_x, input$scatter_y)
++         plot(data()[[input$scatter_x]], data()[[input$scatter_y]], col = "red", main = "Scatterplot", xlab = input$scatter_x, ylab = input$scatter_y)
++     })
++     
++     output$mosaic_plot <- renderPlot({
++         req(input$mosaic_x, input$mosaic_y)
++         mosaicplot(table(data()[[input$mosaic_x]], data()[[input$mosaic_y]]), col = rainbow(5), main = "Mosaic Plot")
++     })
++     
++     output$boxplot <- renderPlot({
++         req(input$box_num, input$box_qual)
++         boxplot(data()[[input$box_num]] ~ data()[[input$box_qual]], col = "purple", main = "Boxplot", xlab = input$box_qual, ylab = input$box_num)
++     })
++ }
+> 
+> shinyApp(ui, server)
